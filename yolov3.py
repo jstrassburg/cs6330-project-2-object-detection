@@ -95,27 +95,6 @@ class BoundBox:
             
         return self.score
 
-def _conv_block(inp, convs, skip=True):
-    x = inp
-    count = 0
-    
-    for conv in convs:
-        if count == (len(convs) - 2) and skip:
-            skip_connection = x
-        count += 1
-        
-        if conv['stride'] > 1: x = ZeroPadding2D(((1,0),(1,0)))(x) # peculiar padding as darknet prefer left and top
-        x = Conv2D(conv['filter'], 
-                   conv['kernel'], 
-                   strides=conv['stride'], 
-                   padding='valid' if conv['stride'] > 1 else 'same', # peculiar padding as darknet prefer left and top
-                   name='conv_' + str(conv['layer_idx']), 
-                   use_bias=False if conv['bnorm'] else True)(x)
-        if conv['bnorm']: x = BatchNormalization(epsilon=0.001, name='bnorm_' + str(conv['layer_idx']))(x)
-        if conv['leaky']: x = LeakyReLU(alpha=0.1, name='leaky_' + str(conv['layer_idx']))(x)
-
-    return add([skip_connection, x]) if skip else x
-
 def _interval_overlap(interval_a, interval_b):
     x1, x2 = interval_a
     x3, x4 = interval_b
@@ -146,6 +125,27 @@ def bbox_iou(box1, box2):
     union = w1*h1 + w2*h2 - intersect
     
     return float(intersect) / union
+
+def _conv_block(inp, convs, skip=True):
+    x = inp
+    count = 0
+    
+    for conv in convs:
+        if count == (len(convs) - 2) and skip:
+            skip_connection = x
+        count += 1
+        
+        if conv['stride'] > 1: x = ZeroPadding2D(((1,0),(1,0)))(x) # peculiar padding as darknet prefer left and top
+        x = Conv2D(conv['filter'], 
+                   conv['kernel'], 
+                   strides=conv['stride'], 
+                   padding='valid' if conv['stride'] > 1 else 'same', # peculiar padding as darknet prefer left and top
+                   name='conv_' + str(conv['layer_idx']), 
+                   use_bias=False if conv['bnorm'] else True)(x)
+        if conv['bnorm']: x = BatchNormalization(epsilon=0.001, name='bnorm_' + str(conv['layer_idx']))(x)
+        if conv['leaky']: x = LeakyReLU(alpha=0.1, name='leaky_' + str(conv['layer_idx']))(x)
+
+    return add([skip_connection, x]) if skip else x
 
 def make_yolov3_model():
     input_image = Input(shape=(None, None, 3))
